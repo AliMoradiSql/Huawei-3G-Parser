@@ -35,11 +35,16 @@ namespace Huawei_3G_Parser
               _site = map.BTS.FirstOrDefault(x => x.Key == t[1]).Value;
             }
 
-            if (param.Any(x => x.Contains("CELLID=")))
+            if (param.Any(x => x.StartsWith("CELLID=")))
             {
               var tmp = param.First(x => x.Contains("CELLID=")).Split('=');
-              _cell = map.Cells.FirstOrDefault(x => x.Key == tmp[1]).Value;
-              _cellId = tmp[1];
+              var mapedCell = map.Cells.FirstOrDefault(x => x.Key == tmp[1]).Value;
+
+              _cellId = map.Cells.FirstOrDefault(x=>x.Key == tmp[1]).Value != null ? tmp[1] : map.NCells.FirstOrDefault(x => x.Key == tmp[1]).Value;
+
+              _cell = map.Cells.FirstOrDefault(x => x.Key == _cellId).Value?.Cell;
+              _site = map.Cells.FirstOrDefault(x => x.Key == _cellId).Value?.RNC;
+
             }
 
             for (int i = 0; i < param.Length; i++)
@@ -83,8 +88,8 @@ namespace Huawei_3G_Parser
 
       }
 
-      Console.WriteLine(count.ToString());
-      count = 0;
+      //Console.WriteLine(count.ToString());
+      //count = 0;
 
       return result;
     }
@@ -141,10 +146,27 @@ namespace Huawei_3G_Parser
 
               key = param.FindKeyOrValue("CELLID=");
               value = param.FindKeyOrValue("CELLNAME=");
+              var rnc = param.FindKeyOrValue("NODEBNAME=");
               //I Add these line for preventing error I must Remove them and empty btsDic per file
               if (map.Cells.Any(x => x.Key == key))
                 continue;
-              map.Cells.Add(key, value);
+              map.Cells.Add(key, new CellName2RNCMap { Cell = value, RNC = rnc });
+            }
+
+          }
+          if (line.Contains(" UINTRAFREQNCELL:"))
+          {
+
+            string[] param = line.Replace("\"", "").Replace(";", "").Split(',');
+            if (param != null)
+            {
+
+              value = param.FindKeyOrValue("CELLID=");
+              key = param.FindKeyOrValue("NCELLID=");
+              //I Add these line for preventing error I must Remove them and empty btsDic per file
+              if (map.NCells.Any(x => x.Key == key))
+                continue;
+              map.NCells.Add(key, value);
             }
 
           }
@@ -158,7 +180,7 @@ namespace Huawei_3G_Parser
 
     public static string FindKeyOrValue(this string[] input, string searchKey)
     {
-      var obj = input.First(x => x.Contains(searchKey));
+      var obj = input.FirstOrDefault(x => x.Contains(searchKey));
       return obj.Substring(obj.IndexOf('=') + 1, (obj.Length - obj.IndexOf('=')) - 1);
     }
   }
