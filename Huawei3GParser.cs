@@ -10,7 +10,7 @@ namespace Huawei_3G_Parser
   public static class Huawei3GParser
   {
 
-    public static List<Huawei3GModelDto> GenarateData(this FileInfo file, MapModle map)
+    public static async Task<List<Huawei3GModelDto>> GenarateData(this FileInfo file, MapModle map)
     {
       string[] Check = { "ADD ", "SET ", "MOD ", "UIN " };
       List<Huawei3GModelDto> result = new();
@@ -40,7 +40,7 @@ namespace Huawei_3G_Parser
               var tmp = param.First(x => x.Contains("CELLID=")).Split('=');
               var mapedCell = map.Cells.FirstOrDefault(x => x.Key == tmp[1]).Value;
 
-              _cellId = map.Cells.FirstOrDefault(x=>x.Key == tmp[1]).Value != null ? tmp[1] : map.NCells.FirstOrDefault(x => x.Key == tmp[1]).Value;
+              _cellId = map.Cells.FirstOrDefault(x => x.Key == tmp[1]).Value != null ? tmp[1] : map.NCells.FirstOrDefault(x => x.Key == tmp[1]).Value;
 
               _cell = map.Cells.FirstOrDefault(x => x.Key == _cellId).Value?.Cell;
               _site = map.Cells.FirstOrDefault(x => x.Key == _cellId).Value?.RNC;
@@ -70,11 +70,17 @@ namespace Huawei_3G_Parser
                 TRX = null,
                 index = _guid,
                 ValueTime = DateTime.Now,
-                Path = _class + "," + "CellId=" + _cellId + "," + "TRXNAME=" + null + ">" + pvalue[0]
+                Path = _class + "/" + "CellId=" + _cellId + "/" + "TRXNAME=" + null + ">" + pvalue[0]
 
               };
 
               result.Add(obj);
+              if (result.Count > 2000000)
+              {
+                await InsertDataToDataBase.InsertAsync(result);
+                result.Clear();
+
+              }
             }
           }
 
@@ -88,7 +94,7 @@ namespace Huawei_3G_Parser
 
       }
 
-      //Console.WriteLine(count.ToString());
+      Console.WriteLine(count.ToString());
       //count = 0;
 
       return result;
@@ -172,7 +178,9 @@ namespace Huawei_3G_Parser
           }
 
         }
+        reder.Dispose();
       }
+
       //5800
       //7000
       return map;
